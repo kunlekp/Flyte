@@ -1,0 +1,40 @@
+{% extends "admin/_layout.html" %}
+{% from "partials/macros.html" import pager %}
+{% block admin_title %}Bookings{% endblock %}
+{% block heading %}Bookings{% endblock %}
+{% block actions %}<a class="btn btn--ghost btn--sm" href="{{ url_for('admin.export', kind='bookings') }}">Export CSV</a>{% endblock %}
+{% block admin %}
+<div class="tile">
+  <form class="toolbar" method="get">
+    <input class="input" type="search" name="q" value="{{ q }}" placeholder="Reference, name, passport or flight" aria-label="Search bookings">
+    <select class="input" name="status" aria-label="Status" style="min-width:160px">
+      <option value="">Any status</option>
+      {% for s in ['Confirmed', 'Checked in', 'Cancelled'] %}<option {% if status == s %}selected{% endif %}>{{ s }}</option>{% endfor %}
+    </select>
+    <button class="btn btn--ink btn--sm" type="submit">Filter</button>
+  </form>
+  <div class="table-wrap">
+    <table class="data">
+      <thead><tr><th>Ref</th><th>Passenger</th><th>Flight</th><th>Seat</th><th>Cabin</th><th>Cover</th><th class="r">Total</th><th>Booked</th><th>Status</th></tr></thead>
+      <tbody>
+      {% for b in bookings %}
+        <tr>
+          <td><a href="{{ url_for('account.trip', booking_id=b.booking_id) }}"><strong>{{ b.booking_id }}</strong></a></td>
+          <td>{{ b.passenger.name }}<div class="tiny muted">{{ b.passenger.passport }}</div></td>
+          <td>{{ b.flight.number }}<div class="tiny muted">{{ b.flight.route }}, {{ b.flight.departure[:10] }}</div></td>
+          <td>{{ b.seat }}</td>
+          <td>{{ b.flight_class }}</td>
+          <td class="small">{{ b.insurance }}</td>
+          <td class="r">{{ b.total_cost | money }}</td>
+          <td class="small num">{{ b.created_at[:16] }}</td>
+          <td><span class="chip {{ 'chip--bad' if b.status == 'Cancelled' else 'chip--good' }}">{{ b.status }}</span></td>
+        </tr>
+      {% else %}
+        <tr><td colspan="9" class="muted">No bookings match.</td></tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {{ pager(pg, 'q=' ~ q ~ '&status=' ~ status) }}
+</div>
+{% endblock %}

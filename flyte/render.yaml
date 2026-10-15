@@ -1,0 +1,33 @@
+# Render Blueprint – New → Blueprint → pick this repo.
+# A persistent disk needs a paid instance (free instances wipe files on every restart).
+services:
+  - type: web
+    name: flyte
+    runtime: python
+    plan: starter
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn --workers 1 --threads 8 --timeout 120 --bind 0.0.0.0:$PORT app:app
+    healthCheckPath: /api/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.7"
+      - key: APP_ENV
+        value: production
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DATABASE_URL
+        value: sqlite:////var/data/flyte.db
+      - key: OUTBOX_PATH
+        value: /var/data/outbox.log
+      - key: APP_TIMEZONE
+        value: Africa/Lagos
+      - key: SEED_DEMO
+        value: "1"
+      - key: ADMIN_EMAIL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+    disk:
+      name: flyte-data
+      mountPath: /var/data
+      sizeGB: 1

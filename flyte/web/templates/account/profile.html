@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Miles and profile · Flyte{% endblock %}
+{% block content %}
+{% set tier = p.loyalty_tier %}{% set nxt = tier.next_tier() %}
+<div class="wrap" style="padding: 24px var(--gutter) 70px">
+  <div class="loyalty">
+    <div class="ring" data-progress="{{ '%.4f' % p.tier_progress }}">
+      <svg viewBox="0 0 200 200" aria-hidden="true"><circle class="track" cx="100" cy="100" r="86"/><circle class="bar" cx="100" cy="100" r="86" stroke-dasharray="540.35" stroke-dashoffset="540.35"/></svg>
+      <div class="ring__label"><strong class="num" data-count="{{ p.miles }}">{{ "{:,}".format(p.miles) }}</strong><span>miles</span></div>
+    </div>
+    <div>
+      <span class="small" style="opacity:.75">{{ p.name }}</span>
+      <h1 style="font-size:clamp(40px,6vw,64px);margin-top:6px">{{ tier.label }} member</h1>
+      <p style="margin-top:10px;opacity:.85;max-width:46ch">
+        {% if nxt %}{{ "{:,}".format(p.miles_to_next_tier) }} more miles to {{ nxt.label }}. You earn miles for every kilometre flown, with bonuses for Business, First and higher tiers.
+        {% else %}You're at the top tier. Every trip earns 50% bonus miles.{% endif %}
+      </p>
+      <div class="tier-steps">{% for t in tiers %}<span class="{{ 'is-on' if p.miles >= t.threshold }}">{{ t.label }}{% if t.threshold %} · {{ "{:,}".format(t.threshold // 1000) }}k{% endif %}</span>{% endfor %}</div>
+    </div>
+  </div>
+
+  <div class="statgrid">
+    <div class="stat"><span>Trips</span><strong class="num">{{ stats.trips }}</strong></div>
+    <div class="stat"><span>Kilometres</span><strong class="num">{{ "{:,}".format(stats.km) }}</strong></div>
+    <div class="stat"><span>Cities</span><strong class="num">{{ stats.cities }}</strong></div>
+    <div class="stat"><span>Spent</span><strong class="num">{{ stats.spent | money_short }}</strong></div>
+  </div>
+
+  <form class="card stack" method="post" style="margin-top:18px;max-width:620px">
+    <h3>Your details</h3>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <div class="grid-2">
+      <div class="field"><label for="name">Full name</label><input class="input" id="name" name="name" value="{{ p.name }}"></div>
+      <div class="field"><label for="phone">Phone</label><input class="input" id="phone" name="phone" value="{{ p.phone }}"></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>Email</label><input class="input" value="{{ p.email }}" disabled></div>
+      <div class="field"><label>Passport</label><input class="input" value="{{ p.passport }}" disabled></div>
+    </div>
+    <div><button class="btn btn--ink" type="submit">Save details</button></div>
+  </form>
+</div>
+{% endblock %}

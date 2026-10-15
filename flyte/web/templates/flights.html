@@ -1,0 +1,68 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import flight_pass, search_ticket, airline_badge %}
+{% block title %}Flights{% if q['from'] or q['to'] %} {{ q['from'] or 'anywhere' }} to {{ q['to'] or 'anywhere' }}{% endif %} · Flyte{% endblock %}
+{% block content %}
+<div class="wrap">
+  <div class="results-head">
+    <h1>{% if q['from'] or q['to'] %}{{ q['from'] or 'Anywhere' }} to {{ q['to'] or 'anywhere' }}{% else %}All departures{% endif %}</h1>
+    <p class="muted" style="margin-top:8px">
+      {% if q.date %}{{ q.date | nice_date }}{% else %}Next 3 weeks{% endif %}, {{ q.cabin }}.
+      {% if cheapest %}{{ cards | length }} flights, cheapest {{ cheapest | money }}.{% endif %}
+    </p>
+  </div>
+  {{ search_ticket(q, airports, today) }}
+
+  {% set base = '?from=' ~ q['from'] ~ '&to=' ~ q['to'] ~ '&date=' ~ q.date ~ '&cabin=' ~ q.cabin ~ '&sort=' ~ q.sort %}
+  {% if pick %}
+  {% set pc = pick_card %}
+  <section class="pick" aria-label="Recommended flight">
+    <div class="pick__label"><span class="chip chip--pick">Our pick</span><span class="small muted">Best value in these results: 70% price, 30% seats left</span></div>
+    <div class="pick__body">
+      <div class="row" style="gap:12px">{{ airline_badge(pc.airline, 'al-badge--lg') }}
+        <div><strong class="pick__airline">{{ pc.airline.name }}</strong><div class="small muted">{{ pc.flight.number }}, {{ pc.flight.departure | nice_date }} at {{ pc.flight.departure | nice_time }}, {{ pc.allowance }}</div></div>
+      </div>
+      <p class="pick__reason">{{ pick.reason }}</p>
+      <div class="pick__cta">
+        <div><span class="small muted">{{ pc.cabin }} from</span><strong class="num">{{ pc.fare | money }}</strong></div>
+        <a class="btn" href="{{ url_for('public.flight', number=pc.flight.number) }}">Book this flight</a>
+      </div>
+    </div>
+  </section>
+  {% endif %}
+
+  {% if airlines | length > 1 or q.airline %}
+  <nav class="airlines" aria-label="Filter by airline">
+    <a class="airline-card {% if not q.airline %}is-on{% endif %}" href="{{ base }}">
+      <strong>All airlines</strong><span class="small muted">{{ airlines | sum(attribute='flights') }} flights</span>
+    </a>
+    {% for a in airlines %}
+      <a class="airline-card {% if q.airline == a.airline.code %}is-on{% endif %}" href="{{ base }}&airline={{ a.airline.code }}">
+        <span class="row" style="gap:8px">{{ airline_badge(a.airline) }}<strong>{{ a.airline.name }}</strong></span>
+        <span class="num">from <b>{{ a.from_fare | money }}</b></span>
+        <span class="small muted">{{ a.flights }} flight{{ 's' if a.flights != 1 }}, {{ a.seats_left }} seats, {{ a.included_bags }} bag{{ 's' if a.included_bags != 1 }} incl.</span>
+      </a>
+    {% endfor %}
+  </nav>
+  {% endif %}
+
+  <div class="filterbar">
+    <span class="small muted">Sort by</span>
+    <div class="segmented">
+      {% for key, label in [('departure', 'Departure'), ('price', 'Price'), ('duration', 'Duration')] %}
+        <a href="?from={{ q['from'] }}&to={{ q['to'] }}&date={{ q.date }}&cabin={{ q.cabin }}&airline={{ q.airline }}&sort={{ key }}" aria-current="{{ 'true' if q.sort == key else 'false' }}">{{ label }}</a>
+      {% endfor %}
+    </div>
+  </div>
+
+  {% if cards %}
+    <div class="passes">{% for card in cards %}{{ flight_pass(card) }}{% endfor %}</div>
+  {% else %}
+    <div class="empty">
+      <h2>No seats on that search</h2>
+      <p>Try another date or leave a field blank to see every route.{% if nearby %} The same route has seats on these days:{% endif %}</p>
+    </div>
+    {% if nearby %}<div class="passes" style="margin-top:16px">{% for card in nearby %}{{ flight_pass(card) }}{% endfor %}</div>{% endif %}
+  {% endif %}
+  <div style="height:60px"></div>
+</div>
+{% endblock %}

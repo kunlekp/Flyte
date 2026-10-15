@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import flight_pass, search_ticket %}
+{% block content %}
+<section class="hero">
+  <div class="wrap">
+    <div class="hero__grid">
+      <div class="hero__copy">
+        <h1>Fly without the drama.</h1>
+        <p class="hero__lede">Book seats across Nigeria and Accra in under a minute. Pick your exact seat, see where fares are heading, and check in from your phone.</p>
+        <div class="hero__stats">
+          <div><strong class="num" data-count="{{ network.airports | length }}">{{ network.airports | length }}</strong><span>airports</span></div>
+          <div><strong class="num" data-count="{{ network.routes | length }}">{{ network.routes | length }}</strong><span>routes</span></div>
+          <div><strong>24h</strong><span>mobile check-in</span></div>
+        </div>
+      </div>
+      <figure class="mapcard" aria-label="Route network map">
+        <svg class="route-map" id="route-map" viewBox="0 0 520 480" role="img" aria-label="Map of Flyte routes between Nigerian cities"></svg>
+        <span class="mapcard__live"><span class="pulse"></span>Live network</span>
+        <span class="mapcard__legend"><i></i>Flying right now</span>
+      </figure>
+    </div>
+    {{ search_ticket({}, airports, today) }}
+  </div>
+  <script type="application/json" id="network-data">{{ network | tojson }}</script>
+</section>
+
+<section class="section">
+  <div class="wrap">
+    <div class="section__head">
+      <h2>Leaving soon</h2>
+      <p>Live fares from the next departures on each route. Prices move with demand, so the chip tells you which way they're heading.</p>
+    </div>
+    {% if cards %}
+      <div class="passes">
+        {% for card in cards %}{{ flight_pass(card) }}{% endfor %}
+      </div>
+      <p style="margin-top:20px"><a class="btn btn--ghost" href="{{ url_for('public.flights') }}">See all flights</a></p>
+    {% else %}
+      <div class="empty"><h2>No departures scheduled yet</h2><p>Flights added in the ops console show up here.</p></div>
+    {% endif %}
+  </div>
+</section>
+
+<section class="section" style="padding-top:0">
+  <div class="wrap">
+    <div class="features">
+      <div class="feature">
+        <span class="feature__icon"><svg><use href="#i-seat"/></svg></span>
+        <h3>Your seat, not a lottery</h3>
+        <p>See the whole cabin and tap the window seat you want. Taken seats update the second someone books.</p>
+      </div>
+      <div class="feature">
+        <span class="feature__icon"><svg><use href="#i-trend"/></svg></span>
+        <h3>Know when to book</h3>
+        <p>Our fare model tracks how fast each flight is selling and projects the price for the days ahead.</p>
+      </div>
+      <div class="feature">
+        <span class="feature__icon"><svg><use href="#i-phone"/></svg></span>
+        <h3>Check in from bed</h3>
+        <p>Check-in opens 24 hours before take-off. Your boarding pass and QR code live in My trips.</p>
+      </div>
+    </div>
+  </div>
+</section>
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/routemap.js') }}?v={{ asset_version }}"></script>{% endblock %}

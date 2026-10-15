@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} · Flyte{% endblock %}
+{% block content %}
+<div class="wrap error-page">
+  <strong>{{ code }}</strong>
+  <h2>{% if code == 404 %}Off the radar{% elif code == 403 %}Crew only{% elif code >= 500 %}Turbulence{% else %}Hold up{% endif %}</h2>
+  <p class="muted" style="max-width:46ch">{{ message }}</p>
+  <a class="btn" href="{{ url_for('public.home') }}">Back to flights</a>
+</div>
+{% endblock %}

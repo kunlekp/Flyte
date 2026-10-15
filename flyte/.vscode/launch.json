@@ -1,0 +1,31 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Flyte: web app",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/app.py",
+      "env": { "FLASK_DEBUG": "1" },
+      "envFile": "${workspaceFolder}/.env",
+      "jinja": true,
+      "justMyCode": true
+    },
+    {
+      "name": "Flyte: console app (original UI)",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "airline.cli",
+      "console": "integratedTerminal",
+      "envFile": "${workspaceFolder}/.env"
+    },
+    {
+      "name": "Flyte: run tests",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "unittest",
+      "args": ["discover", "-s", "tests", "-v"],
+      "console": "integratedTerminal"
+    }
+  ]
+}

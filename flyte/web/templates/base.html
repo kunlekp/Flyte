@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Flyte · Book domestic flights in Nigeria{% endblock %}</title>
+  <meta name="description" content="Book flights across Nigeria and West Africa. Live seat maps, fare predictions and mobile check-in.">
+  <meta name="theme-color" content="#5b3df5">
+  <link rel="icon" href="{{ url_for('static', filename='img/favicon.svg') }}" type="image/svg+xml">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=Instrument+Sans:wght@400..700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/app.css') }}?v={{ asset_version }}">
+  <script src="{{ url_for('static', filename='js/theme.js') }}"></script>
+  {% block head %}{% endblock %}
+</head>
+<body data-csrf="{{ csrf_token() }}">
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="i-plane" viewBox="0 0 24 24"><path fill="currentColor" d="M21 15.5v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V8.5l-8 5v2l8-2.5V18l-2 1.5V21l3.5-1 3.5 1v-1.5L13 18v-5z" transform="rotate(90 12 12)"/></symbol>
+    <symbol id="i-swap" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M7 4 3 8l4 4M3 8h14M17 20l4-4-4-4M21 16H7"/></symbol>
+    <symbol id="i-sun" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></g></symbol>
+    <symbol id="i-moon" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" d="M20 14.5A8 8 0 0 1 9.5 4 8 8 0 1 0 20 14.5z"/></symbol>
+    <symbol id="i-menu" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M4 7h16M4 12h16M4 17h10"/></symbol>
+    <symbol id="i-up" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M7 14l5-5 5 5"/></symbol>
+    <symbol id="i-down" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M7 10l5 5 5-5"/></symbol>
+    <symbol id="i-flat" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" d="M6 12h12"/></symbol>
+    <symbol id="i-seat" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M6 4v9a2 2 0 0 0 2 2h8M6 13h10a2 2 0 0 1 2 2v5M8 15v5"/></symbol>
+    <symbol id="i-trend" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M3 17l6-6 4 4 8-8M15 7h6v6"/></symbol>
+    <symbol id="i-phone" viewBox="0 0 24 24"><g fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="6" y="2.5" width="12" height="19" rx="3"/><path d="M10 18.5h4"/></g></symbol>
+    <symbol id="i-warn" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" d="M12 9v4M12 17h.01M10.3 3.9 2.4 17.6A2 2 0 0 0 4.1 20.6h15.8a2 2 0 0 0 1.7-3L13.7 3.9a2 2 0 0 0-3.4 0z"/></symbol>
+    <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  </svg>
+
+  <header class="nav">
+    <div class="wrap">
+      <nav class="nav__bar" aria-label="Main">
+        <a class="logo" href="{{ url_for('public.home') }}" aria-label="Flyte home">
+          <span class="logo__mark"><svg><use href="#i-plane"/></svg></span>flyte
+        </a>
+        {% set ep = request.endpoint or '' %}
+        <div class="nav__links" id="nav-links">
+          <a href="{{ url_for('public.flights') }}" {% if ep == 'public.flights' %}aria-current="page"{% endif %}>Flights</a>
+          {% if current_user and not current_user.is_admin %}
+            <a href="{{ url_for('account.trips') }}" {% if ep.startswith('account.trip') %}aria-current="page"{% endif %}>My trips</a>
+            <a href="{{ url_for('account.profile') }}" {% if ep == 'account.profile' %}aria-current="page"{% endif %}>Miles</a>
+          {% else %}
+            <a href="{{ url_for('public.manage') }}" {% if ep == 'public.manage' %}aria-current="page"{% endif %}>Manage booking</a>
+          {% endif %}
+          {% if current_user and current_user.is_admin %}
+            <a href="{{ url_for('admin.dashboard') }}" {% if ep.startswith('admin.') %}aria-current="page"{% endif %}>Ops</a>
+          {% endif %}
+        </div>
+        <div class="nav__end">
+          <button class="icon-btn" type="button" data-theme-toggle aria-label="Switch colour theme">
+            <svg class="theme-icon-dark"><use href="#i-moon"/></svg>
+          </button>
+          {% if current_user %}
+            <form method="post" action="{{ url_for('auth.logout') }}">
+              <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+              <button class="btn btn--ghost btn--sm hide-sm" type="submit">Log out</button>
+            </form>
+            {% if current_passenger %}
+              <a class="avatar" href="{{ url_for('account.profile') }}" title="{{ current_passenger.name }}">{{ current_passenger.initials }}</a>
+            {% else %}
+              <span class="avatar" title="Admin">OP</span>
+            {% endif %}
+          {% else %}
+            <a class="btn btn--ghost btn--sm hide-sm" href="{{ url_for('auth.login') }}">Log in</a>
+            <a class="btn btn--sm" href="{{ url_for('auth.signup') }}">Sign up</a>
+          {% endif %}
+          <button class="icon-btn nav__toggle" type="button" data-nav-toggle aria-controls="nav-links" aria-expanded="false" aria-label="Menu">
+            <svg><use href="#i-menu"/></svg>
+          </button>
+        </div>
+      </nav>
+    </div>
+  </header>
+
+  <main id="main">
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <div class="wrap">
+      <span>© {{ 2026 }} Flyte. A student OOP + data science project.</span>
+      <span>Payments run in test mode. No real cards are charged.</span>
+    </div>
+  </footer>
+
+  <div class="toasts" aria-live="polite">
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% for category, message in messages %}
+        <div class="toast toast--{{ category }}" role="status"><span class="toast__dot"></span>{{ message }}<button type="button" aria-label="Dismiss" data-dismiss>×</button></div>
+      {% endfor %}
+    {% endwith %}
+  </div>
+
+  <script type="module" src="{{ url_for('static', filename='js/app.js') }}?v={{ asset_version }}"></script>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

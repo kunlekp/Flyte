@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}{% block admin_title %}Ops{% endblock %} · Flyte Ops{% endblock %}
+{% block content %}
+{% set ep = request.endpoint %}
+<div class="wrap" style="padding-bottom:60px">
+  <div class="admin-head spread">
+    <h1>{% block heading %}Ops{% endblock %}</h1>
+    <div class="row">{% block actions %}{% endblock %}</div>
+  </div>
+  <nav class="admin-tabs" aria-label="Ops sections">
+    <a href="{{ url_for('admin.dashboard') }}" {% if ep == 'admin.dashboard' %}aria-current="page"{% endif %}>Insights</a>
+    <a href="{{ url_for('admin.flights') }}" {% if ep == 'admin.flights' %}aria-current="page"{% endif %}>Flights</a>
+    <a href="{{ url_for('admin.bookings') }}" {% if ep == 'admin.bookings' %}aria-current="page"{% endif %}>Bookings</a>
+    <a href="{{ url_for('admin.passengers') }}" {% if ep == 'admin.passengers' %}aria-current="page"{% endif %}>Passengers</a>
+  </nav>
+  {% block admin %}{% endblock %}
+</div>
+{% endblock %}

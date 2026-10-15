@@ -1,0 +1,7 @@
+{
+  "python.testing.unittestEnabled": true,
+  "python.testing.unittestArgs": ["-v", "-s", "./tests", "-p", "test_*.py"],
+  "files.associations": { "*.html": "jinja-html" },
+  "emmet.includeLanguages": { "jinja-html": "html" },
+  "files.exclude": { "**/__pycache__": true }
+}

@@ -1,0 +1,83 @@
+{% macro trend_chip(trend, change) -%}
+  {%- if trend == 'rising' -%}
+    <span class="chip chip--rising"><svg><use href="#i-up"/></svg>Fares rising</span>
+  {%- elif trend == 'falling' -%}
+    <span class="chip chip--falling"><svg><use href="#i-down"/></svg>May dip</span>
+  {%- else -%}
+    <span class="chip chip--steady"><svg><use href="#i-flat"/></svg>Steady</span>
+  {%- endif -%}
+{%- endmacro %}
+
+{% macro airline_badge(airline, size='') -%}
+  <span class="al-badge {{ size }}" style="--al: {{ airline.colour }}" aria-hidden="true">{{ airline.code }}</span>
+{%- endmacro %}
+
+{% macro flight_pass(card) -%}
+  {% set f = card.flight %}{% set s = card.summary %}
+  <a class="pass {% if card.is_pick %}is-pick{% endif %}" href="{{ url_for('public.flight', number=f.number) }}">
+    <div class="pass__main">
+      <div class="spread">
+        <span class="row" style="gap:10px">{{ airline_badge(card.airline) }}<span class="pass__airline">{{ card.airline.name }}</span><span class="chip chip--solid">{{ f.departure | nice_date }}</span>{% if card.is_pick %}<span class="chip chip--pick">Our pick</span>{% endif %}</span>
+        <span class="tiny muted">{{ f.number }} · {{ f.aircraft_type }}</span>
+      </div>
+      <div class="pass__route">
+        <div class="pass__end"><strong>{{ f.departure | nice_time }}</strong><span>{{ f.origin_code }} · {{ f.origin }}</span></div>
+        <div class="pass__line"><span><svg><use href="#i-plane"/></svg>{{ f.duration_label }}</span></div>
+        <div class="pass__end pass__end--right"><strong>{{ f.arrival | nice_time }}</strong><span>{{ f.destination_code }} · {{ f.destination }}</span></div>
+      </div>
+      <div class="pass__meta">
+        {{ trend_chip(card.trend, card.trend_change) }}
+        {% if card.cabin_seats_left <= 8 %}<span class="chip chip--warn">{{ card.cabin_seats_left }} {{ card.cabin | lower }} seats left</span>{% endif %}
+        {% if s.status == 'Delayed' %}<span class="chip chip--bad">Delayed {{ s.delay_minutes }} min</span>{% endif %}
+        <span class="chip">{{ card.allowance }}</span>
+      </div>
+    </div>
+    <div class="pass__stub">
+      <div>
+        <div class="meter-label"><span>{{ s.load_factor | pct }} full</span></div>
+        <div class="meter {% if s.load_factor > 0.85 %}meter--hot{% endif %}" style="--v: {{ s.load_factor }}"><i></i></div>
+      </div>
+      <div class="pass__price"><span>{{ card.cabin }} from</span><strong class="num">{{ card.fare | money }}</strong></div>
+    </div>
+  </a>
+{%- endmacro %}
+
+{% macro pager(p, args) -%}
+  {% if p.pages > 1 %}
+  <div class="pager">
+    <span>Page {{ p.page }} of {{ p.pages }} · {{ "{:,}".format(p.total) }} rows</span>
+    {% if p.page > 1 %}<a class="btn btn--ghost btn--sm" href="?{{ args }}&page={{ p.page - 1 }}">Previous</a>{% endif %}
+    {% if p.page < p.pages %}<a class="btn btn--ghost btn--sm" href="?{{ args }}&page={{ p.page + 1 }}">Next</a>{% endif %}
+  </div>
+  {% endif %}
+{%- endmacro %}
+
+{% macro search_ticket(q, airports, today, cabins=None) -%}
+  <form class="ticket" action="{{ url_for('public.flights') }}" method="get" role="search">
+    <div class="ticket__form">
+      <div class="ticket__cell">
+        <label for="from">From</label>
+        <input id="from" name="from" list="airport-list" placeholder="Lagos" value="{{ q.get('from', '') }}" autocomplete="off">
+      </div>
+      <button class="swap" type="button" data-swap aria-label="Swap origin and destination"><svg><use href="#i-swap"/></svg></button>
+      <div class="ticket__cell">
+        <label for="to">To</label>
+        <input id="to" name="to" list="airport-list" placeholder="Abuja" value="{{ q.get('to', '') }}" autocomplete="off">
+      </div>
+      <div class="ticket__cell ticket__cell--date">
+        <label for="date">When</label>
+        <input id="date" name="date" type="date" min="{{ today }}" value="{{ q.get('date', '') }}">
+      </div>
+      <div class="ticket__cell ticket__cell--cabin">
+        <label for="cabin">Cabin</label>
+        <select id="cabin" name="cabin">
+          {% for c in ['Economy', 'Business', 'First'] %}<option {% if q.get('cabin') == c %}selected{% endif %}>{{ c }}</option>{% endfor %}
+        </select>
+      </div>
+      <button class="btn" type="submit">Search flights</button>
+    </div>
+    <datalist id="airport-list">
+      {% for a in airports %}<option value="{{ a.city }}">{{ a.code }} · {{ a.name }}</option>{% endfor %}
+    </datalist>
+  </form>
+{%- endmacro %}

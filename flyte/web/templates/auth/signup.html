@@ -1,0 +1,36 @@
+{% extends "base.html" %}
+{% block title %}Create account · Flyte{% endblock %}
+{% macro f(name, label, type='text', auto='', hint='') -%}
+  <div class="field">
+    <label for="{{ name }}">{{ label }}</label>
+    <input class="input" id="{{ name }}" name="{{ name }}" type="{{ type }}" autocomplete="{{ auto }}" value="{{ form.get(name, '') }}" {% if errors and errors.get(name) %}aria-invalid="true" aria-describedby="{{ name }}-err"{% endif %} required>
+    {% if errors and errors.get(name) %}<span class="field__error" id="{{ name }}-err">{{ errors[name] }}</span>{% elif hint %}<span class="field__hint">{{ hint }}</span>{% endif %}
+  </div>
+{%- endmacro %}
+{% block content %}
+<div class="wrap auth">
+  <form class="auth__card auth__card--wide stack" method="post" novalidate>
+    <h1>Get your wings</h1>
+    <p class="muted">One account for bookings, boarding passes and miles. Use the details on your passport.</p>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    {% if errors and errors.get('form') %}<div class="alert" role="alert">{{ errors.form }}</div>{% endif %}
+    {{ f('name', 'Full name', auto='name') }}
+    <div class="grid-2">
+      {{ f('email', 'Email', 'email', 'email') }}
+      {{ f('phone', 'Phone', 'tel', 'tel') }}
+    </div>
+    <div class="grid-2">
+      {{ f('passport', 'Passport number', auto='off', hint='Letters and digits, no spaces') }}
+      {{ f('age', 'Age', 'number') }}
+    </div>
+    <div class="field">
+      <label for="password">Password</label>
+      <input class="input" id="password" name="password" type="password" autocomplete="new-password" minlength="8" required>
+      <span class="field__hint">At least 8 characters, with letters and numbers.</span>
+    </div>
+    <button class="btn btn--block" type="submit">Create account</button>
+    <p class="small muted">Already flying with us? <a href="{{ url_for('auth.login', next=next) }}">Log in</a></p>
+  </form>
+</div>
+{% endblock %}

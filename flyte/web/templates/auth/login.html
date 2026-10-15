@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Log in · Flyte{% endblock %}
+{% block content %}
+<div class="wrap auth">
+  <form class="auth__card stack" method="post" novalidate>
+    <h1>Welcome back</h1>
+    <p class="muted">Log in to book, check in and see your boarding passes.</p>
+    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+    <input type="hidden" name="next" value="{{ next or '' }}">
+    {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+    <div class="field"><label for="email">Email</label><input class="input" id="email" name="email" type="email" autocomplete="email" value="{{ email or '' }}" required autofocus></div>
+    <div class="field"><label for="password">Password</label><input class="input" id="password" name="password" type="password" autocomplete="current-password" required></div>
+    <button class="btn btn--block" type="submit">Log in</button>
+    <p class="small muted">New here? <a href="{{ url_for('auth.signup', next=next) }}">Create an account</a></p>
+    {% if config.SEED_DEMO %}<div class="demo-hint">
+      Demo traveller: <code>ada@flyte.ng</code> / <code>Demo1234</code><br>
+      Ops admin: <code>admin@flyte.ng</code> / <code>FlyteAdmin2026</code>
+    </div>{% endif %}
+  </form>
+</div>
+{% endblock %}

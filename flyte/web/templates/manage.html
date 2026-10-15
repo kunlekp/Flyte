@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% block title %}Manage booking · Flyte{% endblock %}
+{% block content %}
+<div class="wrap auth">
+  {% if booking %}
+    {% set f = booking.flight %}
+    <div class="auth__card auth__card--wide stack">
+      <span class="chip">{{ booking.booking_id }}</span>
+      <h1>{{ f.origin }} to {{ f.destination }}</h1>
+      <p class="muted">{{ f.number }}, {{ f.departure | nice_date }} at {{ f.departure | nice_time }}. Seat {{ booking.seat }}, {{ booking.flight_class }}.</p>
+      <p><span class="chip {{ 'chip--good' if booking.is_active else 'chip--bad' }}">{{ booking.display_status(moment) }}</span></p>
+      <div class="alert alert--info">To check in, download your boarding pass or cancel, log in as {{ booking.passenger.email }}. No account yet? Sign up with the same email and passport and the trip appears automatically.</div>
+      <div class="row"><a class="btn" href="{{ url_for('auth.login') }}">Log in</a><a class="btn btn--ghost" href="{{ url_for('auth.signup') }}">Create account</a></div>
+    </div>
+  {% else %}
+    <form class="auth__card stack" method="post">
+      <h1>Find your booking</h1>
+      <p class="muted">Enter the reference from your confirmation email (it starts with BK) and the email you booked with.</p>
+      <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+      {% if error %}<div class="alert" role="alert">{{ error }}</div>{% endif %}
+      <div class="field"><label for="reference">Booking reference</label><input class="input" id="reference" name="reference" placeholder="BK1042" value="{{ reference or '' }}" required style="text-transform:uppercase"></div>
+      <div class="field"><label for="email">Email</label><input class="input" id="email" name="email" type="email" value="{{ email or '' }}" required></div>
+      <button class="btn btn--block" type="submit">Find booking</button>
+    </form>
+  {% endif %}
+</div>
+{% endblock %}

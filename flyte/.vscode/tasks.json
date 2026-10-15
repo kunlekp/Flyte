@@ -1,0 +1,7 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    { "label": "Reset demo data", "type": "shell", "command": "python manage.py reset-demo", "problemMatcher": [] },
+    { "label": "Run tests", "type": "shell", "command": "python -m unittest discover -s tests -v", "group": "test", "problemMatcher": [] }
+  ]
+}

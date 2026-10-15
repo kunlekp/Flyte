@@ -1,0 +1,151 @@
+{% extends "base.html" %}
+{% block title %}{{ flight.origin }} to {{ flight.destination }}, {{ flight.departure | nice_date }} · Flyte{% endblock %}
+{% block content %}
+<div class="wrap">
+  <section class="flight-hero">
+    <div class="row" style="margin-bottom:14px">
+      <span class="row" style="gap:8px"><span class="al-badge" style="--al: {{ carrier.colour }}" aria-hidden="true">{{ carrier.code }}</span><strong>{{ carrier.name }}</strong></span>
+      <span class="chip chip--solid">{{ flight.number }}</span>
+      <span class="chip">{{ flight.departure | nice_date }}, {{ flight.departure | nice_time }}</span>
+      <span class="chip">{{ flight.duration_label }} · {{ summary.distance_km }} km</span>
+      <span class="chip">{{ flight.aircraft_type }}</span>
+      {% if summary.status == 'Delayed' %}<span class="chip chip--bad">Delayed {{ summary.delay_minutes }} min</span>{% endif %}
+    </div>
+    <div class="flight-hero__codes">
+      <strong>{{ flight.origin_code }}</strong>
+      <span class="plane-line"><svg><use href="#i-plane"/></svg></span>
+      <strong>{{ flight.destination_code }}</strong>
+    </div>
+    <div class="flight-hero__cities"><span>{{ flight.origin }}, {{ flight.departure | nice_time }}</span><span>{{ flight.destination }}, {{ flight.arrival | nice_time }}</span></div>
+  </section>
+
+  {% if not bookable %}
+    <div class="alert" style="margin:20px 0 60px">This flight is closed for booking ({{ summary.status | lower }}). <a href="{{ url_for('public.flights', **{'from': flight.origin, 'to': flight.destination}) }}">See other flights on this route</a>.</div>
+  {% else %}
+  <div class="book" id="booking" data-flight="{{ flight.number }}" data-included='{{ cabins | map(attribute="included_bags") | list | tojson }}' data-cabins='{{ cabins | map(attribute="name") | list | tojson }}' data-bag-kg="{{ baggage.bag_kg }}" data-bag-first="{{ baggage.first_extra_fee | int }}" data-bag-next="{{ baggage.next_extra_fee | int }}" data-bag-max="{{ baggage.max_extra }}" data-logged-in="{{ 'true' if current_passenger else 'false' }}"
+       data-login-url="{{ url_for('auth.login', next=request.path) }}" data-checkout-url="{{ url_for('booking.checkout', number=flight.number) }}">
+    <div>
+      <section class="step is-active" data-step="cabin">
+        <button class="step__head" type="button" data-goto="cabin"><span class="step__no">1</span><span class="step__title">Pick your cabin</span><span class="step__value" data-value="cabin"></span></button>
+        <div class="step__body">
+          <div class="options">
+            {% for c in cabins %}
+              <label class="option">
+                <input type="radio" name="cabin" value="{{ c.name }}" {% if loop.first %}checked{% endif %} {% if not c.seats_left %}disabled{% endif %}>
+                <div class="option__top"><span class="option__name">{{ c.name }}</span><span class="option__price num">{{ c.fare | money }}</span></div>
+                <ul>{% for perk in c.perks %}<li>{{ perk }}</li>{% endfor %}</ul>
+                <span class="tiny muted">{% if c.seats_left %}{{ c.seats_left }} of {{ c.capacity }} seats left{% else %}Sold out{% endif %}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <div style="margin-top:18px"><button class="btn" type="button" data-next="seat">Choose a seat</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="seat">
+        <button class="step__head" type="button" data-goto="seat" disabled><span class="step__no">2</span><span class="step__title">Choose your seat</span><span class="step__value" data-value="seat"></span></button>
+        <div class="step__body">
+          <div class="cabin-legend">
+            <span><i class="is-cabin"></i>Available in your cabin</span>
+            <span><i class="is-taken"></i>Taken</span>
+            <span><i class="is-picked"></i>Your seat</span>
+          </div>
+          <div class="fuselage" id="seatmap" aria-label="Seat map"><div class="skeleton"></div></div>
+          <div class="spread" style="margin-top:18px">
+            <span class="small muted" id="seat-hint">A and F are windows. C and D are aisles.</span>
+            <button class="btn" type="button" data-next="bags" disabled id="seat-next">Continue</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" data-step="bags">
+        <button class="step__head" type="button" data-goto="bags" disabled><span class="step__no">3</span><span class="step__title">Luggage</span><span class="step__value" data-value="bags"></span></button>
+        <div class="step__body">
+          <p data-allowance-text>Your fare includes <strong data-included-label></strong> and a {{ baggage.cabin_bag_kg }}kg cabin bag.</p>
+          <div class="bags">
+            <div>
+              <strong>Extra checked bags</strong>
+              <div class="small muted">Up to {{ baggage.bag_kg }}kg each. First extra bag {{ baggage.first_extra_fee | money }}, then {{ baggage.next_extra_fee | money }} each, set by {{ carrier.name }}.</div>
+            </div>
+            <div class="counter" role="group" aria-label="Extra checked bags">
+              <button type="button" class="icon-btn" data-bags="-1" aria-label="Remove a bag">−</button>
+              <output id="bag-count" aria-live="polite">0</output>
+              <button type="button" class="icon-btn" data-bags="1" aria-label="Add a bag">+</button>
+            </div>
+          </div>
+          <p class="small muted" style="margin-top:10px" data-bag-fee-line>No extra luggage fee.</p>
+          <div style="margin-top:18px"><button class="btn" type="button" data-next="cover">Continue</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="cover">
+        <button class="step__head" type="button" data-goto="cover" disabled><span class="step__no">4</span><span class="step__title">Travel cover</span><span class="step__value" data-value="cover"></span></button>
+        <div class="step__body">
+          <div class="options">
+            {% for t in insurance %}
+              <label class="option">
+                <input type="radio" name="insurance" value="{{ t.name }}" {% if t.name == 'None' %}checked{% endif %}>
+                <div class="option__top"><span class="option__name">{{ 'No cover' if t.name == 'None' else ('I have my own' if t.name == 'Existing Insurance' else t.name) }}</span><span class="option__price num">{{ t.price | money if t.price else 'Free' }}</span></div>
+                <p>{{ t.blurb }}</p>
+              </label>
+            {% endfor %}
+          </div>
+          <p class="small muted" style="margin-top:12px">Premium cover also refunds your full fare if you cancel before departure.</p>
+          <div style="margin-top:18px"><button class="btn" type="button" data-next="pay">Continue to payment</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="pay">
+        <button class="step__head" type="button" data-goto="pay" disabled><span class="step__no">5</span><span class="step__title">Pay and confirm</span><span class="step__value"></span></button>
+        <div class="step__body">
+          {% if not current_passenger %}
+            <div class="alert alert--info" style="margin-bottom:16px">Log in or create an account to finish booking. Your choices are kept.</div>
+            <div class="row"><a class="btn" href="{{ url_for('auth.login', next=request.path) }}" data-keep-state>Log in</a><a class="btn btn--ghost" href="{{ url_for('auth.signup', next=request.path) }}" data-keep-state>Create account</a></div>
+          {% else %}
+          <form id="pay-form" class="stack" novalidate>
+            <p class="small">Booking for <strong>{{ current_passenger.name }}</strong>, passport {{ current_passenger.passport }}.</p>
+            <div class="field"><label for="card-holder">Name on card</label><input class="input" id="card-holder" autocomplete="cc-name" value="{{ current_passenger.name }}" required></div>
+            <div class="field"><label for="card-number">Card number</label><input class="input num" id="card-number" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242" required></div>
+            <div class="grid-2">
+              <div class="field"><label for="card-exp">Expiry</label><input class="input num" id="card-exp" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required></div>
+              <div class="field"><label for="card-cvc">Security code</label><input class="input num" id="card-cvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4" required></div>
+            </div>
+            <div class="testcards">Test mode. Try:
+              <button type="button" data-card="4242424242424242">4242… approved</button>
+              <button type="button" data-card="4000000000000002">4000…0002 declined</button>
+            </div>
+            <div class="alert" id="pay-error" hidden></div>
+            <button class="btn btn--volt btn--block" type="submit" id="pay-btn">Pay <span data-total>—</span></button>
+          </form>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <aside class="summary" aria-label="Booking summary">
+      <div class="summary__top">
+        <span class="small muted">{{ carrier.name }}, {{ flight.number }}, {{ flight.departure | nice_date }}</span>
+        <div class="summary__route"><span>{{ flight.origin_code }}</span><svg width="26" height="26" style="color:var(--danfo)"><use href="#i-plane"/></svg><span>{{ flight.destination_code }}</span></div>
+      </div>
+      <div class="summary__body">
+        <div class="summary__line"><span>Fare (<span data-sum="cabin">Economy</span>)</span><span class="num" data-sum="fare">—</span></div>
+        <div class="summary__line"><span>Seat</span><span data-sum="seat">Not picked</span></div>
+        <div class="summary__line"><span>Extra bags (<span data-sum="bags">0</span>)</span><span class="num" data-sum="bagfee">₦0</span></div>
+        <div class="summary__line"><span>Cover</span><span class="num" data-sum="cover">₦0</span></div>
+        <div class="summary__total"><span class="muted">Total</span><strong class="num" data-sum="total">—</strong></div>
+        <div class="advice" id="advice" aria-live="polite">
+          <div class="advice__head"><span class="small" style="font-weight:650">Fare forecast</span><span data-advice-chip></span></div>
+          <svg class="spark" viewBox="0 0 300 54" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <p data-advice-text>Checking how this flight is selling…</p>
+        </div>
+        <details class="small muted">
+          <summary style="cursor:pointer">How this price is set</summary>
+          <p style="margin-top:8px">Base fare × cabin multiplier, adjusted for how full the cabin is (<span data-sum="demand">—</span>) and how close departure is (<span data-sum="time">—</span>).</p>
+        </details>
+      </div>
+    </aside>
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/booking.js') }}?v={{ asset_version }}"></script>{% endblock %}

@@ -1,0 +1,100 @@
+{% extends "admin/_layout.html" %}
+{% block admin_title %}Insights{% endblock %}
+{% block heading %}Network pulse{% endblock %}
+{% block actions %}
+  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.export', kind='bookings') }}">Export bookings CSV</a>
+  <a class="btn btn--ghost btn--sm" href="{{ url_for('admin.export', kind='flights') }}">Export flights CSV</a>
+{% endblock %}
+{% block admin %}
+<div class="bento" id="dashboard" data-src="{{ url_for('api.overview') }}">
+  <!-- KPI row -->
+  <div class="tile kpi kpi--hero span-3" data-kpi="revenue"><span class="kpi__label">Net revenue, last 30 days</span><span class="kpi__value num" data-v>—</span><span class="kpi__delta" data-d></span></div>
+  <div class="tile kpi span-3" data-kpi="load_factor"><span class="kpi__label">Load factor</span><span class="kpi__value num" data-v>—</span><span class="kpi__delta" data-d></span><span class="kpi__note">Seats sold ÷ seats flown</span></div>
+  <div class="tile kpi span-3" data-kpi="rask"><span class="kpi__label">RASK</span><span class="kpi__value num" data-v>—</span><span class="kpi__delta" data-d></span><span class="kpi__note">Revenue per available seat-km</span></div>
+  <div class="tile kpi span-3" data-kpi="otp"><span class="kpi__label">On-time departures</span><span class="kpi__value num" data-v>—</span><span class="kpi__delta" data-d></span><span class="kpi__note">Within 15 min of schedule</span></div>
+  <div class="tile kpi span-3" data-kpi="bookings"><span class="kpi__label">Bookings</span><span class="kpi__value num" data-v>—</span><span class="kpi__delta" data-d></span></div>
+  <div class="tile kpi span-3" data-kpi="avg_fare"><span class="kpi__label">Average fare</span><span class="kpi__value num" data-v>—</span><span class="kpi__delta" data-d></span></div>
+  <div class="tile kpi span-3" data-kpi="attach_rate"><span class="kpi__label">Cover attach rate</span><span class="kpi__value num" data-v>—</span><span class="kpi__delta" data-d></span><span class="kpi__note">Bookings that bought paid cover</span></div>
+  <div class="tile kpi span-3" data-kpi="cancel_rate" data-invert><span class="kpi__label">Cancellation rate</span><span class="kpi__value num" data-v>—</span><span class="kpi__delta" data-d></span></div>
+
+  <!-- revenue trend -->
+  <div class="tile span-8">
+    <div class="tile__head">
+      <div><h3>Daily revenue</h3><p class="tile__sub">Net of refunds, by purchase date. Last 60 days.</p></div>
+      <div class="legend"><span><i style="background:var(--seq-250)"></i>Daily</span><span><i class="line" style="background:var(--series-1)"></i>7-day average</span></div>
+    </div>
+    <div class="chart" id="chart-revenue"><div class="skeleton"></div></div>
+  </div>
+  <div class="tile span-4">
+    <div class="tile__head"><div><h3>Cabin mix</h3><p class="tile__sub">Revenue by cabin, active bookings</p></div></div>
+    <div class="chart" id="chart-cabins"><div class="skeleton"></div></div>
+  </div>
+
+  <!-- forecast -->
+  <div class="tile span-8">
+    <div class="tile__head">
+      <div><h3>Demand forecast</h3><p class="tile__sub" id="forecast-sub">Bookings per day, next 14 days</p></div>
+      <div class="legend"><span><i class="line" style="background:var(--ink-3)"></i>Actual</span><span><i class="line" style="background:var(--series-1)"></i>Forecast</span><span><i class="band" style="background:var(--series-1)"></i>80% range</span></div>
+    </div>
+    <div class="chart" id="chart-forecast"><div class="skeleton"></div></div>
+  </div>
+  <div class="tile span-4">
+    <div class="tile__head"><div><h3>Model card</h3><p class="tile__sub">How much to trust the forecast</p></div></div>
+    <div class="stack" id="model-card" style="--stack:12px"><div class="skeleton"></div></div>
+  </div>
+
+  <!-- airlines -->
+  <div class="tile span-12">
+    <div class="tile__head"><div><h3>Airlines on Flyte</h3><p class="tile__sub">Cheaper airlines fill more seats; premium ones run more on time. Load factor and on-time rate use departed flights only.</p></div></div>
+    <div class="table-wrap" id="airlines"><div class="skeleton"></div></div>
+  </div>
+
+  <!-- lead time -->
+  <div class="tile span-6">
+    <div class="tile__head"><div><h3>When people book</h3><p class="tile__sub">Bookings by days before departure</p></div></div>
+    <div class="chart" id="chart-lead"><div class="skeleton"></div></div>
+  </div>
+  <div class="tile span-6">
+    <div class="tile__head"><div><h3>What they pay</h3><p class="tile__sub">Average economy fare by days before departure</p></div></div>
+    <div class="chart" id="chart-leadfare"><div class="skeleton"></div></div>
+  </div>
+
+  <!-- routes table -->
+  <div class="tile span-7">
+    <div class="tile__head"><div><h3>Top routes</h3><p class="tile__sub">Ranked by revenue. Yield is revenue per passenger-km.</p></div></div>
+    <div class="table-wrap" id="routes"><div class="skeleton"></div></div>
+  </div>
+  <div class="tile span-5">
+    <div class="tile__head"><div><h3>Booking rhythm</h3><p class="tile__sub">Purchases by weekday and hour</p></div></div>
+    <div id="heatmap"><div class="skeleton"></div></div>
+  </div>
+
+  <!-- segments -->
+  <div class="tile span-12">
+    <div class="tile__head">
+      <div><h3>Customer segments</h3><p class="tile__sub" id="seg-sub">K-means clustering on trips, spend, lead time and premium share</p></div>
+    </div>
+    <div class="segments" id="segments"><div class="skeleton"></div></div>
+  </div>
+
+  <!-- ops -->
+  <div class="span-7 board">
+    <div class="tile__head"><div><h3>Departures</h3><p class="tile__sub" style="color:#9a96c8">Next 72 hours</p></div></div>
+    <div class="table-wrap" id="board"></div>
+  </div>
+  <div class="tile span-5">
+    <div class="tile__head"><div><h3>Flights selling slowly</h3><p class="tile__sub">Load factor behind the usual booking curve for this many days out</p></div></div>
+    <div id="at-risk"><div class="skeleton"></div></div>
+  </div>
+
+  <div class="tile span-6">
+    <div class="tile__head"><div><h3>Top customers</h3><p class="tile__sub">Lifetime spend</p></div></div>
+    <div class="table-wrap" id="top-customers"><div class="skeleton"></div></div>
+  </div>
+  <div class="tile span-6">
+    <div class="tile__head"><div><h3>Passenger ages</h3><p class="tile__sub">Unique travellers</p></div></div>
+    <div class="chart" id="chart-ages"><div class="skeleton"></div></div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/admin.js') }}?v={{ asset_version }}"></script>{% endblock %}
