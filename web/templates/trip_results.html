@@ -1,0 +1,56 @@
+{% extends "base.html" %}
+{% from "partials/macros.html" import search_ticket, leg_option, airline_badge %}
+{% block title %}{{ trip.value }} trip · Flyte{% endblock %}
+{% block content %}
+<div class="wrap" style="padding-bottom:140px">
+  <div class="results-head">
+    <h1>{% if trip.value == 'Return' and q.legs %}{{ q.legs[0].origin }} to {{ q.legs[0].destination }} and back{% elif q.legs %}{{ q.legs | map(attribute='origin') | join(' → ') }} → {{ q.legs[-1].destination }}{% else %}Plan a {{ trip.value | lower }} trip{% endif %}</h1>
+    <p class="muted" style="margin-top:8px">{{ trip.value }} trip, {{ q.cabin }}. Pick one flight for each part of your journey, then check out once.{% if trip.fare_discount %} Booking out and back together takes {{ (trip.fare_discount * 100) | int }}% off both fares.{% endif %}</p>
+  </div>
+  {{ search_ticket(q, airports, today) }}
+
+  {% if error %}<div class="alert" role="alert" style="margin-top:20px">{{ error }}</div>{% endif %}
+
+  {% for sec in sections %}
+    {% set r = sec.result %}
+    <section class="leg" data-leg-section="{{ loop.index0 }}" {% if sec.pick %}data-pick="{{ sec.pick.option.flight.number }}"{% endif %}>
+      <header class="leg__head">
+        <span class="leg__no">{{ loop.index }}</span>
+        <div>
+          <h2>{{ r.request.origin }} to {{ r.request.destination }}</h2>
+          <p class="small muted">{% if r.request.date %}{{ r.request.date | nice_date }}{% else %}Any day in the next 2 weeks{% endif %}{% if trip.value == 'Return' %}{{ ', outbound' if loop.first else ', return' }}{% endif %}</p>
+        </div>
+        <span class="leg__chosen small" data-chosen-label>Not chosen yet</span>
+      </header>
+      {% if not r.exact_date %}<div class="alert alert--info" style="margin-bottom:14px">No flights on {{ r.request.date | nice_date }}. Showing flights up to 3 days either side.</div>{% endif %}
+      {% if sec.pick %}
+        <p class="leg__pick"><span class="chip chip--pick">Our pick</span> {{ sec.pick_card.airline.name }} {{ sec.pick_card.flight.number }}, {{ sec.pick_card.fare | money }}. {{ sec.pick.reason }}</p>
+      {% endif %}
+      {% if sec.cards %}
+        <div class="passes">{% for card in sec.cards %}{{ leg_option(card, r.index) }}{% endfor %}</div>
+      {% else %}
+        <div class="empty"><h2>No seats on this part</h2><p>Try another date for this flight, or change the cities.</p></div>
+      {% endif %}
+    </section>
+  {% endfor %}
+</div>
+
+{% if sections %}
+<form class="tripsum" action="{{ url_for('public.trip_checkout') }}" method="get" data-trip-form data-legs="{{ sections | length }}" data-discount="{{ trip.fare_discount }}">
+  <input type="hidden" name="trip" value="{{ q.trip }}">
+  <input type="hidden" name="cabin" value="{{ q.cabin }}">
+  <div class="wrap tripsum__inner">
+    <ol class="tripsum__legs" data-summary>
+      {% for sec in sections %}<li data-sum-leg="{{ loop.index0 }}"><span class="leg__no leg__no--sm">{{ loop.index }}</span><span data-sum-text class="muted">Choose a flight</span></li>{% endfor %}
+    </ol>
+    <div class="tripsum__end">
+      <p class="small" data-trip-warning hidden></p>
+      <div><span class="small muted">{{ q.cabin }} fares{% if trip.fare_discount %}, {{ (trip.fare_discount * 100) | int }}% return discount applied{% endif %}</span><strong class="num" data-trip-total>—</strong></div>
+      <button type="button" class="btn btn--ghost btn--sm" data-use-picks>Use our picks</button>
+      <button type="submit" class="btn" data-continue disabled>Continue</button>
+    </div>
+  </div>
+</form>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/triplanner.js') }}?v={{ asset_version }}"></script>{% endblock %}

@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+{% block title %}Check out your {{ trip.value | lower }} trip · Flyte{% endblock %}
+{% block content %}
+{% set legdata = [] %}
+{% for l in legs %}{% set _ = legdata.append({'number': l.flight.number, 'airline': l.carrier.name, 'route': l.flight.origin_code ~ '–' ~ l.flight.destination_code, 'included': l.included, 'baggage': l.baggage}) %}{% endfor %}
+<div class="wrap">
+  <section class="flight-hero">
+    <div class="row" style="margin-bottom:14px"><span class="chip chip--solid">{{ trip.value }} trip</span><span class="chip">{{ legs | length }} flights</span></div>
+    <h1 style="font-size:clamp(40px,7vw,80px)">{% for l in legs %}{{ l.flight.origin_code }} → {% endfor %}{{ legs[-1].flight.destination_code }}</h1>
+    <ol class="itin">
+      {% for l in legs %}
+      <li class="itin__leg">
+        <span class="leg__no leg__no--sm">{{ loop.index }}</span>
+        <span class="al-badge al-badge--sm" style="--al: {{ l.carrier.colour }}" aria-hidden="true">{{ l.carrier.code }}</span>
+        <strong>{{ l.flight.origin }} to {{ l.flight.destination }}</strong>
+        <span class="muted small">{{ l.carrier.name }} {{ l.flight.number }}, {{ l.flight.departure | nice_date }}, {{ l.flight.departure | nice_time }}–{{ l.flight.arrival | nice_time }}</span>
+      </li>
+      {% endfor %}
+    </ol>
+  </section>
+
+  <div class="book" id="trip-booking" data-trip="{{ trip.slug }}" data-flights='{{ numbers | tojson }}' data-legs='{{ legdata | tojson }}'
+       data-logged-in="{{ 'true' if current_passenger else 'false' }}" data-checkout-url="{{ url_for('booking.trip_checkout_api') }}">
+    <div>
+      <section class="step is-active" data-step="cabin">
+        <button class="step__head" type="button" data-goto="cabin"><span class="step__no">1</span><span class="step__title">Pick your cabin</span><span class="step__value" data-value="cabin"></span></button>
+        <div class="step__body">
+          <p class="small muted" style="margin-bottom:12px">One cabin for the whole trip. Prices are the total for all {{ legs | length }} flights.</p>
+          <div class="options">
+            {% for c in cabins %}
+              <label class="option">
+                <input type="radio" name="cabin" value="{{ c.name }}" {% if c.name == preferred or (loop.first and preferred not in cabins | map(attribute='name')) %}checked{% endif %} {% if not c.seats_left %}disabled{% endif %}>
+                <div class="option__top"><span class="option__name">{{ c.name }}</span><span class="option__price num">{{ c.fare | money }}</span></div>
+                <ul>{% for perk in c.perks %}<li>{{ perk }}</li>{% endfor %}</ul>
+                <span class="tiny muted">{% if c.seats_left %}At least {{ c.seats_left }} seats left on every flight{% else %}Sold out on one of your flights{% endif %}</span>
+              </label>
+            {% endfor %}
+          </div>
+          <div style="margin-top:18px"><button class="btn" type="button" data-next="seat">Choose seats</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="seat">
+        <button class="step__head" type="button" data-goto="seat" disabled><span class="step__no">2</span><span class="step__title">Choose a seat on each flight</span><span class="step__value" data-value="seat"></span></button>
+        <div class="step__body">
+          <div class="segmented seat-tabs" role="tablist">
+            {% for l in legs %}<button type="button" role="tab" data-seat-tab="{{ loop.index0 }}" aria-pressed="{{ 'true' if loop.first else 'false' }}">{{ loop.index }}. {{ l.flight.origin_code }}–{{ l.flight.destination_code }} <span data-tab-seat></span></button>{% endfor %}
+          </div>
+          <div class="cabin-legend">
+            <span><i class="is-cabin"></i>Available in your cabin</span><span><i class="is-taken"></i>Taken</span><span><i class="is-picked"></i>Your seat</span>
+          </div>
+          {% for l in legs %}<div class="fuselage" data-seatmap="{{ loop.index0 }}" {% if not loop.first %}hidden{% endif %} aria-label="Seat map for {{ l.flight.number }}"><div class="skeleton"></div></div>{% endfor %}
+          <div class="spread" style="margin-top:18px">
+            <span class="small muted" data-seat-hint>Pick a seat on flight 1.</span>
+            <button class="btn" type="button" data-next="bags" disabled id="seat-next">Continue</button>
+          </div>
+        </div>
+      </section>
+
+      <section class="step" data-step="bags">
+        <button class="step__head" type="button" data-goto="bags" disabled><span class="step__no">3</span><span class="step__title">Luggage</span><span class="step__value" data-value="bags"></span></button>
+        <div class="step__body">
+          <p>Extra bags apply to every flight in your trip. Each airline prices them its own way.</p>
+          <div class="bags">
+            <div><strong>Extra checked bags per flight</strong><div class="small muted">On top of what each fare includes. Up to 3.</div></div>
+            <div class="counter" role="group" aria-label="Extra checked bags">
+              <button type="button" class="icon-btn" data-bags="-1" aria-label="Remove a bag">−</button>
+              <output id="bag-count" aria-live="polite">0</output>
+              <button type="button" class="icon-btn" data-bags="1" aria-label="Add a bag">+</button>
+            </div>
+          </div>
+          <table class="data" style="margin-top:12px" data-bag-table>
+            <thead><tr><th>Flight</th><th>Included</th><th class="r">Extra bag fee</th></tr></thead>
+            <tbody>{% for l in legs %}<tr data-bag-row="{{ loop.index0 }}"><td>{{ l.flight.number }} <span class="muted small">{{ l.carrier.name }}</span></td><td data-included></td><td class="r num" data-fee>₦0</td></tr>{% endfor %}</tbody>
+          </table>
+          <div style="margin-top:18px"><button class="btn" type="button" data-next="cover">Continue</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="cover">
+        <button class="step__head" type="button" data-goto="cover" disabled><span class="step__no">4</span><span class="step__title">Travel cover</span><span class="step__value" data-value="cover"></span></button>
+        <div class="step__body">
+          <p class="small muted" style="margin-bottom:12px">One policy covers the whole trip.</p>
+          <div class="options">
+            {% for t in insurance %}
+              <label class="option">
+                <input type="radio" name="insurance" value="{{ t.name }}" {% if t.name == 'None' %}checked{% endif %}>
+                <div class="option__top"><span class="option__name">{{ 'No cover' if t.name == 'None' else ('I have my own' if t.name == 'Existing Insurance' else t.name) }}</span><span class="option__price num">{{ t.price | money if t.price else 'Free' }}</span></div>
+                <p>{{ t.blurb }}</p>
+              </label>
+            {% endfor %}
+          </div>
+          <div style="margin-top:18px"><button class="btn" type="button" data-next="pay">Continue to payment</button></div>
+        </div>
+      </section>
+
+      <section class="step" data-step="pay">
+        <button class="step__head" type="button" data-goto="pay" disabled><span class="step__no">5</span><span class="step__title">Pay once for the whole trip</span><span class="step__value"></span></button>
+        <div class="step__body">
+          {% if not current_passenger %}
+            <div class="alert alert--info" style="margin-bottom:16px">Log in or create an account to finish booking.</div>
+            <div class="row"><a class="btn" href="{{ url_for('auth.login', next=request.full_path) }}">Log in</a><a class="btn btn--ghost" href="{{ url_for('auth.signup', next=request.full_path) }}">Create account</a></div>
+          {% else %}
+          <form id="pay-form" class="stack" novalidate>
+            <p class="small">Booking {{ legs | length }} flights for <strong>{{ current_passenger.name }}</strong>, passport {{ current_passenger.passport }}.</p>
+            <div class="field"><label for="card-holder">Name on card</label><input class="input" id="card-holder" autocomplete="cc-name" value="{{ current_passenger.name }}" required></div>
+            <div class="field"><label for="card-number">Card number</label><input class="input num" id="card-number" inputmode="numeric" autocomplete="cc-number" placeholder="4242 4242 4242 4242" required></div>
+            <div class="grid-2">
+              <div class="field"><label for="card-exp">Expiry</label><input class="input num" id="card-exp" inputmode="numeric" autocomplete="cc-exp" placeholder="MM/YY" maxlength="5" required></div>
+              <div class="field"><label for="card-cvc">Security code</label><input class="input num" id="card-cvc" inputmode="numeric" autocomplete="cc-csc" placeholder="123" maxlength="4" required></div>
+            </div>
+            <div class="testcards">Test mode. Try:
+              <button type="button" data-card="4242424242424242">4242… approved</button>
+              <button type="button" data-card="4000000000000002">4000…0002 declined</button>
+            </div>
+            <div class="alert" id="pay-error" hidden></div>
+            <button class="btn btn--volt btn--block" type="submit" id="pay-btn">Pay <span data-total>—</span></button>
+          </form>
+          {% endif %}
+        </div>
+      </section>
+    </div>
+
+    <aside class="summary" aria-label="Trip summary">
+      <div class="summary__top">
+        <span class="small muted">{{ trip.value }} trip, {{ legs | length }} flights</span>
+        <div class="summary__route" style="font-size:30px;justify-content:flex-start;gap:10px;flex-wrap:wrap">{% for l in legs %}<span>{{ l.flight.origin_code }}</span><svg width="20" height="20" style="color:var(--danfo)"><use href="#i-plane"/></svg>{% endfor %}<span>{{ legs[-1].flight.destination_code }}</span></div>
+      </div>
+      <div class="summary__body">
+        {% for l in legs %}
+          <div class="summary__line"><span>{{ loop.index }}. {{ l.flight.number }} fare<span class="muted" data-leg-seat="{{ loop.index0 }}"></span></span><span class="num" data-leg-fare="{{ loop.index0 }}">—</span></div>
+        {% endfor %}
+        {% if trip.fare_discount %}<div class="summary__line"><span>Return discount ({{ (trip.fare_discount * 100) | int }}% off fares)</span><span class="num" data-sum="discount">−₦0</span></div>{% endif %}
+        <div class="summary__line"><span>Extra bags</span><span class="num" data-sum="bagfee">₦0</span></div>
+        <div class="summary__line"><span>Cover (whole trip)</span><span class="num" data-sum="cover">₦0</span></div>
+        <div class="summary__total"><span class="muted">Total</span><strong class="num" data-sum="total">—</strong></div>
+      </div>
+    </aside>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/tripbooking.js') }}?v={{ asset_version }}"></script>{% endblock %}

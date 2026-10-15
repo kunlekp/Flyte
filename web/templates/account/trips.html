@@ -1,0 +1,57 @@
+{% extends "base.html" %}
+{% block title %}My trips · Flyte{% endblock %}
+{% block content %}
+<div class="wrap" style="padding-bottom:60px">
+  <div class="results-head">
+    <h1>{% if upcoming %}Hey {{ current_passenger.first_name }}, {{ upcoming | length }} trip{{ 's' if upcoming | length != 1 }} coming up{% else %}No trips coming up{% endif %}</h1>
+  </div>
+  <div class="tabs segmented" role="tablist">
+    <button type="button" role="tab" aria-pressed="true" data-tab="upcoming">Upcoming</button>
+    <button type="button" role="tab" aria-pressed="false" data-tab="past">Past and cancelled</button>
+  </div>
+
+  <div data-panel="upcoming">
+    {% for b in upcoming %}
+      {% set f = b.flight %}
+      <a class="tripcard" href="{{ url_for('account.trip', booking_id=b.booking_id) }}">
+        <div class="datebox"><strong>{{ f.departure[8:10] }}</strong><span>{{ f.departure | day_month | replace(f.departure[8:10] ~ ' ', '') }}</span></div>
+        <div>
+          <h3>{{ f.origin }} to {{ f.destination }}</h3>
+          <p class="small muted" style="margin-top:4px">{{ f.number }}, departs {{ f.departure | nice_time }}. Seat {{ b.seat }}, {{ b.flight_class }}.</p>
+          <p class="countdown" data-countdown="{{ f.expected_departure_dt.isoformat() }}{{ utc_offset() }}" style="margin-top:6px">{{ f.departure | relative_days }}</p>
+        </div>
+        <div class="row">
+          {% set open, note = b.check_in_window(moment) %}
+          {% if b.status == 'Checked in' %}<span class="chip chip--good"><svg><use href="#i-check"/></svg>Checked in</span>
+          {% elif open %}<span class="chip chip--warn">Check-in open</span>{% endif %}
+          {% if f.status(moment).value == 'Delayed' %}<span class="chip chip--bad">Delayed {{ f.delay_minutes }} min</span>{% endif %}
+          {% if b.is_multi_leg %}<span class="chip chip--steady">{{ b.trip_type }}, {{ b.leg_label | lower }}</span>{% endif %}
+          <span class="chip">{{ b.booking_id }}</span>
+        </div>
+      </a>
+    {% else %}
+      <div class="empty"><h2>Where to next?</h2><p>Your upcoming flights will show here with a countdown and check-in.</p><a class="btn" href="{{ url_for('public.flights') }}">Find a flight</a></div>
+    {% endfor %}
+  </div>
+
+  <div data-panel="past" hidden>
+    {% for b in past %}
+      {% set f = b.flight %}
+      <a class="tripcard" href="{{ url_for('account.trip', booking_id=b.booking_id) }}">
+        <div class="datebox"><strong>{{ f.departure[8:10] }}</strong><span>{{ f.departure | day_month | replace(f.departure[8:10] ~ ' ', '') }}</span></div>
+        <div>
+          <h3>{{ f.origin }} to {{ f.destination }}</h3>
+          <p class="small muted" style="margin-top:4px">{{ f.number }}, seat {{ b.seat }}, {{ b.total_cost | money }}</p>
+        </div>
+        <div class="row">
+          {% set st = b.display_status(moment) %}
+          <span class="chip {{ 'chip--bad' if 'ancel' in st else 'chip--good' }}">{{ st }}</span>
+          {% if b.miles_earned and b.is_active %}<span class="chip">+{{ "{:,}".format(b.miles_earned) }} miles</span>{% endif %}
+        </div>
+      </a>
+    {% else %}
+      <div class="empty"><h2>Nothing here yet</h2><p>Flights you've taken or cancelled will show up here.</p></div>
+    {% endfor %}
+  </div>
+</div>
+{% endblock %}

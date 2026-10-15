@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}{{ trip.trip_id }} · {{ trip.route_label }} · Flyte{% endblock %}
+{% block content %}
+<div class="wrap" style="padding: 20px var(--gutter) 70px">
+  <div style="max-width:760px;margin:0 auto 22px" {% if is_new %}data-celebrate{% endif %}>
+    {% if is_new %}
+      <h1 style="font-size:clamp(40px,7vw,72px)">Your {{ trip.trip_type.value | lower }} trip is booked.</h1>
+      <p class="muted" style="margin-top:10px">Trip {{ trip.trip_id }}: {{ trip.leg_count }} flights, one payment. Receipts are on their way to {{ trip.passenger.email }}.</p>
+    {% else %}
+      <a class="small muted" href="{{ url_for('account.trips') if current_passenger else url_for('admin.bookings') }}">← All trips</a>
+      <h1 style="font-size:clamp(36px,6vw,60px);margin-top:8px">{{ trip.route_label }}</h1>
+      <p class="muted" style="margin-top:6px">{{ trip.trip_type.value }} trip {{ trip.trip_id }}</p>
+    {% endif %}
+  </div>
+
+  <div style="max-width:760px;margin:0 auto">
+    {% for b in trip.legs %}
+      {% set f = b.flight %}
+      <a class="tripcard" href="{{ url_for('account.trip', booking_id=b.booking_id) }}">
+        <div class="datebox"><strong>{{ f.departure[8:10] }}</strong><span>{{ f.departure | day_month | replace(f.departure[8:10] ~ ' ', '') }}</span></div>
+        <div>
+          <span class="small muted">{{ b.leg_label }}</span>
+          <h3>{{ f.origin }} to {{ f.destination }}</h3>
+          <p class="small muted" style="margin-top:4px"><span class="al-badge al-badge--sm" style="--al: {{ f.carrier.colour }};vertical-align:middle">{{ f.carrier.code }}</span> {{ f.carrier.name }} {{ f.number }}, {{ f.departure | nice_time }}–{{ f.arrival | nice_time }}. Seat {{ b.seat }}, {{ b.total_bags }} checked bag{{ 's' if b.total_bags != 1 }}.</p>
+        </div>
+        <div class="row">
+          {% set st = b.display_status(moment) %}
+          <span class="chip {{ 'chip--bad' if 'ancel' in st else 'chip--good' }}">{{ st }}</span>
+          <span class="chip">Boarding pass</span>
+        </div>
+      </a>
+    {% endfor %}
+
+    <div class="card" style="margin-top:16px">
+      <h3>Trip receipt</h3>
+      <div class="stack" style="--stack:8px;margin-top:12px">
+        {% for b in trip.legs %}<div class="summary__line"><span>{{ b.flight.number }} {{ b.flight_class }} fare</span><span class="num">{{ b.ticket_price | money }}</span></div>{% endfor %}
+        {% if trip.discount %}<div class="summary__line"><span>Return discount (already taken off the fares)</span><span class="num">−{{ trip.discount | money }}</span></div>{% endif %}
+        <div class="summary__line"><span>Extra checked bags</span><span class="num">{{ trip.baggage_fees | money }}</span></div>
+        <div class="summary__line"><span>{{ trip.legs[0].insurance if trip.legs[0].insurance != 'None' else 'No travel cover' }} (whole trip)</span><span class="num">{{ trip.insurance_cost | money }}</span></div>
+        <div class="summary__total"><span class="muted">Paid with card ending {{ trip.legs[0].card_last4 or '••••' }}</span><strong class="num" style="font-size:26px">{{ trip.total_cost | money }}</strong></div>
+        {% if trip.refunded %}<div class="summary__line"><span>Refunded so far</span><span class="num">{{ trip.refunded | money }}</span></div>{% endif %}
+        <p class="small muted">Open a flight above to check in, see its boarding pass or cancel just that flight.</p>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+{% block scripts %}<script type="module" src="{{ url_for('static', filename='js/trip.js') }}?v={{ asset_version }}"></script>{% endblock %}
