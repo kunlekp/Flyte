@@ -1,5 +1,7 @@
 """Traveller account: trips, boarding pass, check-in, cancel, profile."""
 
+import re
+
 from flask import Blueprint, abort, flash, redirect, render_template, request, url_for
 
 from airline.errors import AirlineError
@@ -15,13 +17,18 @@ class QRCodeRenderer:
     """Server-side QR via `segno` (in requirements.txt). If it's missing the
     boarding pass simply shows the reference in large type instead."""
 
-    @staticmethod
-    def svg(data):
+    # Newer segno releases reject "currentColor", so draw in black and swap the
+    # colour afterwards; the QR then follows the page's light/dark theme.
+    _BLACK = re.compile(r'(stroke|fill)="#0{3}(?:0{3})?"')
+
+    @classmethod
+    def svg(cls, data):
         try:
             import segno
-        except ImportError:
+            markup = segno.make(data, error="m").svg_inline(scale=4, border=0, dark="#000", light=None)
+        except Exception:          # missing library or any rendering problem: show the reference instead
             return None
-        return segno.make(data, error="m").svg_inline(scale=4, border=0, dark="currentColor", light=None)
+        return cls._BLACK.sub(r'\1="currentColor"', markup)
 
 
 class OwnedBookingMixin:
@@ -58,9 +65,23 @@ class TripView(OwnedBookingMixin, BaseView):
         refund_amount, refund_note = self.system.refund_policy.refund_for(booking, moment)
         qr = QRCodeRenderer.svg(f"FLYTE|{booking.booking_id}|{booking.flight.number}|{booking.seat}|"
                                 f"{booking.passenger.passport}") if booking.is_active else None
+        itinerary = self.system.trip_for(booking)
         return render_template("account/trip.html", booking=booking, flight=booking.flight, moment=moment,
+                               itinerary=itinerary,
                                can_check_in=can_check_in, check_in_note=check_in_note,
                                refund_amount=refund_amount, refund_note=refund_note, qr=qr,
+                               is_new=request.args.get("new") == "1")
+
+
+class ItineraryView(BaseView):
+    """All flights of a return or multi-city trip on one page."""
+    decorators = [Auth.login_required]
+
+    def get(self, trip_id):
+        trip = self.system.get_trip(trip_id)
+        if not self.user.is_admin and (not self.passenger or trip.passenger.passport != self.passenger.passport):
+            abort(404)
+        return render_template("account/itinerary.html", trip=trip, moment=self.now(),
                                is_new=request.args.get("new") == "1")
 
 
@@ -116,6 +137,7 @@ class ProfileView(BaseView):
 
 
 bp.add_url_rule("/trips", view_func=TripsView.as_view("trips"))
+bp.add_url_rule("/trips/trip/<trip_id>", view_func=ItineraryView.as_view("itinerary"))
 bp.add_url_rule("/trips/<booking_id>", view_func=TripView.as_view("trip"))
 bp.add_url_rule("/trips/<booking_id>/check-in", view_func=CheckInView.as_view("check_in"), methods=["POST"])
 bp.add_url_rule("/trips/<booking_id>/cancel", view_func=CancelView.as_view("cancel"), methods=["POST"])
